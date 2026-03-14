@@ -1,0 +1,1063 @@
+<!-- byl použit copilot -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAPTCHA Clicker</title>
+    <style>
+        :root {
+            --xp-blue: #0054E3;
+            --xp-blue-grad-top: #0058EE;
+            --xp-blue-grad-bot: #0054E3;
+            --xp-title-text: #FFFFFF;
+            --xp-bg: #ECE9D8;
+            --xp-border: #00138C;
+            --win-border: #6582F5;
+        }
+
+        body {
+            font-family: 'Tahoma', 'Segoe UI', sans-serif;
+            background-color: #3A6EA5; /* Classic Desktop Blue */
+            background-image: url('https://upload.wikimedia.org/wikipedia/en/2/27/Bliss_%28Windows_XP%29.png'); 
+            background-size: cover;
+            background-position: center;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 15px;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        /* XP Window Frame */
+        .xp-window {
+            background-color: var(--xp-bg);
+            border: 3px solid #245EDB; /* Blue Theme Border */
+            border-radius: 8px 8px 0 0;
+            box-shadow: 4px 4px 12px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .xp-title-bar {
+            background: linear-gradient(180deg, #245EDB 0%, #296CE8 5%, #0D8DEA 10%, #0058EE 100%);
+            padding: 6px 8px 4px 8px; /* Correct padding for XP */
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start; /* XP buttons are top aligned */
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+            height: 30px;
+            border-radius: 5px 5px 0 0;
+            box-sizing: border-box;
+        }
+        
+        .xp-title-text {
+             display: flex;
+             align-items: center;
+             height: 100%;
+             padding-top: 2px;
+        }
+
+        .xp-button-group {
+            display: flex;
+            gap: 2px;
+        }
+        
+        .xp-control-btn {
+            width: 21px;
+            height: 21px;
+            border: 1px solid #FFF;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: inset 0 0 2px rgba(255,255,255,0.7);
+            text-shadow: 0 1px 1px rgba(0,0,0,0.3);
+            cursor: pointer;
+            margin-top: 1px;
+        }
+
+        .xp-control-btn:hover {
+             filter: brightness(1.1);
+        }
+
+        .xp-control-btn:active {
+             filter: brightness(0.9);
+        }
+
+        .xp-control-btn.close {
+            background: linear-gradient(180deg, #EB9287 0%, #D84F39 50%, #C43419 100%);
+        }
+
+        .xp-control-btn.minimize, .xp-control-btn.maximize {
+            background: linear-gradient(180deg, #5C94F9 0%, #286CFA 100%);
+            font-family: monospace;
+            line-height: 16px;
+        }
+        
+        .xp-control-btn.minimize {
+            align-items: flex-end;
+            padding-bottom: 3px;
+        }
+
+        /* Inner Content Area */
+        .xp-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            padding: 3px;
+            background-color: var(--xp-bg);
+        }
+
+        /* The white background container */
+        .container {
+            display: flex;
+            flex: 1;
+            background-color: #FFFFFF;
+            border: 1px solid #8E8F8F;
+            height: 100%;
+            position: relative;
+        }
+
+        main {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(to bottom, #f3f4f8 0%, #d7dbe3 100%);
+            min-width: 340px; /* Ensure space for 300px captcha + padding */
+        }
+        
+        /* Custom Scrollbar for that retro feel */
+        ::-webkit-scrollbar {
+            width: 16px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-left: 1px solid #e0e0e0;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1; 
+            border: 2px solid #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8; 
+        }
+
+        .score-container {
+            font-size: 32px;
+            font-weight: bold;
+            color: #444;
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            margin-bottom: 20px;
+            background: #fff;
+            padding: 10px 30px;
+            border: 1px solid #7F9DB9;
+            border-radius: 3px;
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .mps-label {
+            font-size: 16px; 
+            color: #888; 
+            margin-top: 5px;
+            font-weight: normal;
+        }
+        
+        .captchas-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .captcha-placeholder {
+            width: 300px;
+            height: 74px;
+            border: 2px dashed #A0A0A0;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font-size: 12px;
+            font-style: italic;
+            box-sizing: border-box;
+        }
+
+        /* Sidebar / Shop */
+        aside {
+            width: 300px;
+            background-color: #ECE9D8;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 8px;
+            box-sizing: border-box; /* Ensure padding doesnt break mobile size */
+        }
+
+        aside.right-panel {
+            border-left: 2px solid #ECE9D8;
+        }
+
+        aside.left-panel {
+            border-right: 2px solid #ECE9D8;
+            width: 250px; /* Slightly narrower for achievements */
+        }
+
+        .panel-content {
+            background: #fff;
+            border: 1px solid #7F9DB9;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        aside h2 {
+            margin: 0;
+            padding: 10px;
+            background: linear-gradient(to right, #7db3e6 0%, #bfd8f1 100%);
+            border-bottom: 1px solid #7F9DB9;
+            font-size: 14px;
+            color: #00156E;
+            font-weight: bold;
+            text-align: left;
+            font-family: 'Tahoma', sans-serif;
+        }
+
+        .scrollable-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        
+        .achievement-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 6px;
+            border: 1px solid #D0D0BF;
+            background: #fcfcfc;
+            border-radius: 2px;
+        }
+
+        .achievement-icon {
+            width: 32px;
+            height: 32px;
+            background: #eee;
+            border: 1px solid #999;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #bbb;
+        }
+        
+        .achievement-info {
+            flex: 1;
+        }
+        
+        .achievement-title {
+            font-weight: bold;
+            font-size: 11px;
+            color: #333;
+            margin-bottom: 2px;
+        }
+        
+        .achievement-desc {
+            font-size: 10px;
+            color: #666;
+            line-height: 1.1;
+        }
+
+        .achievement-item.unlocked .achievement-icon {
+            background: linear-gradient(135deg, #FFD700 0%, #FDB931 100%);
+            border-color: #E6B800;
+            color: #fff;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.2);
+        }
+        
+        .achievement-item.unlocked {
+            background-color: #fffae6;
+            border-color: #E6B800;
+        }
+
+        .achievement-item.solved {
+            background-color: #E6FFEC;
+            border-color: #61B329;
+        }
+
+        .achievement-item.solved .achievement-title,
+        .achievement-item.solved .achievement-desc {
+            text-decoration: line-through;
+            color: #558038;
+        }
+
+        .achievement-item.solved .achievement-icon {
+            background: linear-gradient(135deg, #71D945 0%, #4FA329 100%);
+            border-color: #3D8020;
+            color: #fff;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.2);
+        }
+
+        /* Replaces .shop-items and .shop-panel styles for compatibility but keeping them for now if possible */
+        .shop-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .upgrade-category,
+        .achievement-category {
+            margin-bottom: 15px;
+        }
+
+        .upgrade-category h3,
+        .achievement-category h3 {
+            font-size: 11px;
+            color: #003399;
+            text-transform: capitalize;
+            font-weight: bold;
+            margin: 5px 0 5px 0;
+            padding-left: 5px;
+            position: relative;
+            font-family: 'Tahoma', sans-serif;
+        }
+        
+        .upgrade-category h3::after,
+        .achievement-category h3::after {
+            content: '';
+            display: block;
+            height: 1px;
+            background: #D0D0BF;
+            margin-top: 2px;
+        }
+
+        .upgrade-item {
+            display: flex;
+            flex-direction: column;
+            background: #fbfbfb;
+            border: 1px solid #D0D0BF;
+            padding: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.1s;
+            position: relative;
+        }
+
+        .upgrade-item:hover:not(.disabled) {
+            background-color: #FFE6A0;
+            border-color: #E2C063;
+        }
+        
+        .upgrade-item:active:not(.disabled) {
+            background-color: #FFD35B;
+        }
+
+        .upgrade-item.disabled {
+            opacity: 0.7;
+            cursor: default;
+            background-color: #f5f5f5;
+            color: #888;
+            filter: grayscale(100%);
+        }
+
+        .upgrade-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2px;
+        }
+
+        .upgrade-name {
+            font-weight: bold;
+            font-size: 12px;
+            color: #000;
+        }
+
+        .upgrade-cost {
+            color: #cc0000;
+            font-weight: bold;
+            font-size: 11px;
+            font-family: 'Tahoma', sans-serif;
+        }
+
+        .upgrade-desc {
+            font-size: 11px;
+            color: #444;
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .upgrade-level {
+            font-size: 10px;
+            font-weight: normal;
+            color: #1A4F9C;
+        }
+
+        /* Captcha Styles */
+        .captcha-box {
+            background: #FFFFFF;
+            border: 1px solid #d3d3d3;
+            width: 300px;
+            height: 74px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            box-shadow: 2px 2px 3px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .captcha-box:hover {
+             border-color: #999;
+        }
+
+        .captcha-box.golden {
+            background: linear-gradient(180deg, #FFF9D1 0%, #FFD700 100%);
+            border: 2px solid #E6B800;
+            box-shadow: 0 0 10px #FFD700;
+        }
+
+        .captcha-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .captcha-checkbox {
+            width: 24px;
+            height: 24px;
+            border: 1px solid #c1c1c1;
+            background-color: #fff;
+            margin-right: 12px;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 1px 1px 1px rgba(0,0,0,0.1);
+            border-radius: 2px;
+        }
+
+        .captcha-checkbox:hover {
+            border-color: #b2b2b2;
+        }
+
+        /* Spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4285f4;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Checkmark */
+        .checkmark {
+            display: none;
+            width: 10px;
+            height: 20px;
+            border: solid #009688;
+            border-width: 0 4px 4px 0;
+            transform: rotate(45deg);
+            margin-top: -4px;
+        }
+
+        /* States */
+        .captcha-box.verifying .spinner {
+            display: block;
+        }
+        
+        .captcha-box.solved .captcha-checkbox {
+            border: none;
+        }
+
+        .captcha-box.solved .checkmark {
+            display: block;
+        }
+
+        .captcha-label {
+            color: #000;
+            font-size: 14px;
+            font-weight: 500;
+            font-family: 'Roboto', 'Arial', sans-serif;
+        }
+
+        .captcha-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .captcha-logo svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .captcha-terms {
+            font-size: 10px;
+            color: #555;
+            text-align: center;
+            margin-top: 2px;
+            line-height: 1.2;
+        }
+        
+        /* Floating Text for clicks */
+        .floating-text {
+            position: absolute;
+            color: #008000;
+            font-family: 'Times New Roman', serif;
+            font-weight: bold;
+            font-size: 24px;
+            pointer-events: none;
+            animation: floatUp 1s cubic-bezier(0.08, 0.82, 0.17, 1) forwards;
+            z-index: 100;
+            text-shadow: 1px 1px 0 #fff;
+        }
+        
+        .floating-text.golden-text {
+            color: #FFD700;
+            font-size: 28px;
+            text-shadow: 1px 1px 0 #000;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.1); opacity: 0; }
+        }
+
+        .mobile-controls {
+            display: none; /* Hidden on desktop */
+            justify-content: space-between;
+            padding: 10px;
+            background: #ECE9D8;
+            border-bottom: 1px solid #999;
+        }
+
+        .mobile-btn {
+            background: linear-gradient(to bottom, #f9f9f9 0%, #e3e3e3 100%);
+            border: 1px solid #7F9DB9;
+            padding: 5px 10px;
+            font-family: 'Tahoma', sans-serif;
+            font-size: 11px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .mobile-btn:active {
+            background: #e3e3e3;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        /* Responsive Styles */
+        @media only screen and (max-width: 1000px) {
+            .container {
+                flex-direction: column;
+            }
+
+            aside.left-panel, 
+            aside.right-panel {
+                display: none; /* Hidden by default on mobile */
+                width: 100%;
+                border: none;
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                right: 0; /* Cover full width */
+                z-index: 100;
+                height: 100%;
+            }
+
+            aside.left-panel.show-mobile,
+            aside.right-panel.show-mobile {
+                display: flex;
+            }
+
+            aside.left-panel .panel-content,
+            aside.right-panel .panel-content {
+                border: none;
+            }
+
+            /* Add close button for mobile panels */
+            .mobile-close-btn {
+                display: block;
+                text-align: right;
+                padding: 5px;
+                background: #ECE9D8;
+                border-bottom: 1px solid #7F9DB9;
+                color: #cc0000;
+                font-weight: bold;
+                cursor: pointer;
+            }
+
+            .mobile-controls {
+                display: flex !important; /* Force show on mobile */
+            }
+
+            .mobile-control-bar {
+                display: block !important;
+            }
+            
+            main {
+                display: flex; /* Always show main unless covered */
+                padding: 10px;
+                min-width: 0; /* Override the min-width: 340px from desktop */
+            }
+
+            /* Main is hidden when a panel is open to avoid scrolling issues */
+            body.panel-open main,
+            body.panel-open .mobile-controls {
+                display: none !important;
+            }
+
+            /* When panel open, it takes full screen */
+            aside.left-panel.show-mobile,
+            aside.right-panel.show-mobile {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                z-index: 9999;
+                padding: 10px;
+                background: #ECE9D8;
+                box-sizing: border-box;
+            }
+            
+            /* Adjust title bar */
+            .xp-title-text {
+                font-size: 12px;
+            }
+        }
+
+        /* Small mobile screens */
+        @media only screen and (max-width: 400px) {
+            .container {
+                width: 100%;
+                border: none;
+            }
+            
+            main {
+                min-width: 0;
+                padding: 10px 5px;
+            }
+
+            .captcha-box,
+            .captcha-placeholder {
+                width: 90%; /* Slight reduction to ensure margins */
+                max-width: 300px; 
+                margin: 0 auto; /* Center with margin */
+            }
+        }
+        
+        .mobile-control-bar {
+            display: none;
+        }
+
+        /* JavaScript function injected earlier */
+    </style>
+    <script>
+        function toggleMobilePanel(panelClass) {
+            // Find panel by class
+            let panel = document.querySelector('aside.' + panelClass);
+            if (!panel) return;
+
+            const body = document.body;
+            
+            // If opening this panel
+            if (!panel.classList.contains('show-mobile')) {
+                // Close other panels first
+                document.querySelectorAll('aside').forEach(el => {
+                    el.classList.remove('show-mobile');
+                });
+                
+                panel.classList.add('show-mobile');
+                body.classList.add('panel-open');
+            } else {
+                // Closing
+                panel.classList.remove('show-mobile');
+                body.classList.remove('panel-open');
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div class="xp-window">
+        <div class="xp-title-bar">
+            <div class="xp-title-text">CAPTCHA Clicker.exe</div>
+            <div class="xp-button-group">
+                <div class="xp-control-btn minimize">_</div>
+                <div class="xp-control-btn maximize">□</div>
+                <div class="xp-control-btn close">X</div>
+            </div>
+        </div>
+        
+        <div class="xp-content">
+            <div class="container">
+                <!-- Achievements Panel -->
+                <aside class="achievements-sidebar left-panel">
+                    <div class="mobile-control-bar" style="text-align: right; margin-bottom: 5px;">
+                        <button class="mobile-btn" onclick="toggleMobilePanel('left-panel')">Close [X]</button>
+                    </div>
+                    <div class="panel-content">
+                        <h2>Achievements</h2>
+                        <div class="scrollable-list">
+                            
+                            <div class="achievement-category">
+                                <h3>Clicking</h3>
+                                <div class="achievement-item solved">
+                                    <div class="achievement-icon">🖱️</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Newbie Clicker</div>
+                                        <div class="achievement-desc">Solve 100 captchas.</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item solved">
+                                    <div class="achievement-icon">🖱️</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Experienced Clicker</div>
+                                        <div class="achievement-desc">Solve 1,000 captchas.</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">🖱️</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Click Master</div>
+                                        <div class="achievement-desc">Solve 10,000 captchas.</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">🖱️</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Click God</div>
+                                        <div class="achievement-desc">Solve 100,000 captchas.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="achievement-category">
+                                <h3>Special</h3>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">✨</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Golden Touch</div>
+                                        <div class="achievement-desc">Catch 1 Golden Captcha.</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">✨</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Golden Hunter</div>
+                                        <div class="achievement-desc">Catch 10 Golden Captchas.</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">✨</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Midas</div>
+                                        <div class="achievement-desc">Catch 100 Golden Captchas.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="achievement-category">
+                                <h3>Shop</h3>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">🛒</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">First Upgrade</div>
+                                        <div class="achievement-desc">Buy your first upgrade.</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">💰</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Big Spender</div>
+                                        <div class="achievement-desc">Spend $1,000.</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">🤖</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Tech Enthusiast</div>
+                                        <div class="achievement-desc">Unlock Auto-Clicker.</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">🎰</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Full House</div>
+                                        <div class="achievement-desc">Unlock all slots.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="achievement-category">
+                                <h3>Money</h3>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">💵</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Pocket Change</div>
+                                        <div class="achievement-desc">Earn $100.</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">💵</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Richie Rich</div>
+                                        <div class="achievement-desc">Earn $10,000.</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">💰</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Millionaire</div>
+                                        <div class="achievement-desc">Earn $1,000,000.</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="achievement-category">
+                                <h3>Secret</h3>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">❓</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Hacker?</div>
+                                        <div class="achievement-desc">...</div>
+                                    </div>
+                                </div>
+                                <div class="achievement-item">
+                                    <div class="achievement-icon">❓</div>
+                                    <div class="achievement-info">
+                                        <div class="achievement-title">Patient</div>
+                                        <div class="achievement-desc">...</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Mobile Toggle Buttons (Moved inside container) -->
+                <div class="mobile-controls">
+                    <button class="mobile-btn" onclick="toggleMobilePanel('left-panel')">🏆 Achievements</button>
+                    <button class="mobile-btn" onclick="toggleMobilePanel('right-panel')">🛒 Shop</button>
+                </div>
+
+                <main>
+                    <!-- Money Count -->
+                    <div class="score-container">
+                        <div>
+                            <span style="color: #444; font-size: 28px;">$</span><span>0</span>
+                        </div>
+                        <span class="mps-label">(<span>0</span> $/sec)</span>
+                    </div>
+
+                    <!-- Wrapper for Captchas to keep them centered together -->
+                    <div class="captchas-wrapper">
+
+                        <!-- Normal Captcha Example -->
+                        <div class="captcha-box">
+                            <div class="captcha-left">
+                                <div class="captcha-checkbox">
+                                    <div class="spinner"></div> <!-- Show .spinner class on verifying -->
+                                    <div class="checkmark"></div> <!-- Show .checkmark class on solved -->
+                                </div>
+                                <div class="captcha-label">I'm not a robot</div>
+                            </div>
+                            <div class="captcha-right">
+                                <div class="captcha-logo">
+                                    <svg viewBox="0 0 48 48">
+                                        <path fill="#4285f4" d="M24,0C10.7,0,0,10.7,0,24s10.7,24,24,24s24-10.7,24-24S37.3,0,24,0z M24,44C13,44,4,35,4,24S13,4,24,4s20,9,20,20S35,44,24,44z"/>
+                                        <path fill="#4285f4" d="M35,24c0,6.1-4.9,11-11,11s-11-4.9-11-11s4.9-11,11-11S35,17.9,35,24z" opacity="0.1"/>
+                                    </svg>
+                                </div>
+                                <div class="captcha-terms">reCAPTCHA<br>Privacy - Terms</div>
+                            </div>
+                        </div>
+
+                        <!-- Golden Captcha Example (Static) -->
+                        <div class="captcha-box golden">
+                            <div class="captcha-left">
+                                <div class="captcha-checkbox">
+                                    <div class="spinner"></div>
+                                    <div class="checkmark"></div>
+                                </div>
+                                <div class="captcha-label">I'm not a robot</div>
+                            </div>
+                            <div class="captcha-right">
+                                <div class="captcha-logo">
+                                    <svg viewBox="0 0 48 48">
+                                        <path fill="#4285f4" d="M24,0C10.7,0,0,10.7,0,24s10.7,24,24,24s24-10.7,24-24S37.3,0,24,0z M24,44C13,44,4,35,4,24S13,4,24,4s20,9,20,20S35,44,24,44z"/>
+                                        <path fill="#4285f4" d="M35,24c0,6.1-4.9,11-11,11s-11-4.9-11-11s4.9-11,11-11S35,17.9,35,24z" opacity="0.1"/>
+                                    </svg>
+                                </div>
+                                <div class="captcha-terms">reCAPTCHA<br>Privacy - Terms</div>
+                            </div>
+                        </div>
+
+                        <!-- Placeholders -->
+                        <div class="captcha-placeholder">Slot #3 (Locked)</div>
+                        <div class="captcha-placeholder">Slot #4 (Locked)</div>
+                        <div class="captcha-placeholder">Slot #5 (Locked)</div>
+                    
+                        <!-- Future Vue Loop for Captchas -->
+                        <!-- <div class="captcha-box" v-for="captcha in captchas" :key="captcha.id"> ... </div> -->
+                    </div>
+                </main>
+
+                <!-- Sidebar / Shop -->
+                <aside class="right-panel">
+                    <div class="mobile-control-bar" style="text-align: right; margin-bottom: 5px;">
+                        <button class="mobile-btn" onclick="toggleMobilePanel('right-panel')">Close [X]</button>
+                    </div>
+                    <div class="panel-content">
+                        <h2>Upgrade Shop</h2>
+                        <div class="scrollable-list" id="shop-container">
+                            
+                            <!-- Basic Upgrades -->
+                            <div class="upgrade-category">
+                                <h3>Basic Upgrades</h3>
+                                
+                                <div class="upgrade-item">
+                                    <div class="upgrade-header">
+                                        <span class="upgrade-name">Verification Speed</span>
+                                        <span class="upgrade-cost">15</span>
+                                    </div>
+                                    <div class="upgrade-desc">Reduces time to verify a captcha.</div>
+                                    <div class="upgrade-level">Current: 2.00s</div>
+                                </div>
+
+                                <div class="upgrade-item">
+                                    <div class="upgrade-header">
+                                        <span class="upgrade-name">Captcha Slots</span>
+                                        <span class="upgrade-cost">100</span>
+                                    </div>
+                                    <div class="upgrade-desc">Increases max number of visible captchas.</div>
+                                    <div class="upgrade-level">Current: 1</div>
+                                </div>
+
+                                <div class="upgrade-item">
+                                    <div class="upgrade-header">
+                                        <span class="upgrade-name">Additional Captcha</span>
+                                        <span class="upgrade-cost">50</span>
+                                    </div>
+                                    <div class="upgrade-desc">Adds another active captcha button.</div>
+                                    <div class="upgrade-level">Current: 1</div>
+                                </div>
+
+                                <div class="upgrade-item">
+                                    <div class="upgrade-header">
+                                        <span class="upgrade-name">Revenue per Click</span>
+                                        <span class="upgrade-cost">25</span>
+                                    </div>
+                                    <div class="upgrade-desc">Increase money earned per solved captcha.</div>
+                                    <div class="upgrade-level">Current: $1</div>
+                                </div>
+                            </div>
+
+                            <!-- Automatization -->
+                            <div class="upgrade-category">
+                                <h3>Automatization</h3>
+                                
+                                <div class="upgrade-item disabled">
+                                    <div class="upgrade-header">
+                                        <span class="upgrade-name">Script</span>
+                                        <span class="upgrade-cost">150</span>
+                                    </div>
+                                    <div class="upgrade-desc">Automatically clicks captcha occasionally.</div>
+                                    <div class="upgrade-level">Current: 0</div>
+                                </div>
+
+                                <div class="upgrade-item disabled">
+                                    <div class="upgrade-header">
+                                        <span class="upgrade-name">Bot</span>
+                                        <span class="upgrade-cost">500</span>
+                                    </div>
+                                    <div class="upgrade-desc">A more advanced auto-clicker.</div>
+                                    <div class="upgrade-level">Current: 0</div>
+                                </div>
+
+                                <div class="upgrade-item disabled">
+                                    <div class="upgrade-header">
+                                        <span class="upgrade-name">Server Farm</span>
+                                        <span class="upgrade-cost">2000</span>
+                                    </div>
+                                    <div class="upgrade-desc">Generates passive income over time.</div>
+                                    <div class="upgrade-level">Current: 0</div>
+                                </div>
+                            </div>
+
+                            <!-- Special Upgrades -->
+                            <div class="upgrade-category">
+                                <h3>Special Upgrades</h3>
+                                
+                                <div class="upgrade-item disabled">
+                                    <div class="upgrade-header">
+                                        <span class="upgrade-name">Golden Chance</span>
+                                        <span class="upgrade-cost">1000</span>
+                                    </div>
+                                    <div class="upgrade-desc">Increases chance of Golden Captcha spawning.</div>
+                                    <div class="upgrade-level">Current: 1%</div>
+                                </div>
+
+                                <div class="upgrade-item disabled">
+                                    <div class="upgrade-header">
+                                        <span class="upgrade-name">Bonus Duration</span>
+                                        <span class="upgrade-cost">1500</span>
+                                    </div>
+                                    <div class="upgrade-desc">Golden Captcha effects last longer.</div>
+                                    <div class="upgrade-level">Current: 10s</div>
+                                </div>
+
+                                <div class="upgrade-item disabled">
+                                    <div class="upgrade-header">
+                                        <span class="upgrade-name">Income Multiplier</span>
+                                        <span class="upgrade-cost">5000</span>
+                                    </div>
+                                    <div class="upgrade-desc">Permanently multiplies all income.</div>
+                                    <div class="upgrade-level">Current: x1</div>
+                                </div>
+                            </div>
+                            
+                            <!-- Future Vue Loop for Shop -->
+                            <!-- <div class="upgrade-category" v-for="category in categories"> ... </div> -->
+                            
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
