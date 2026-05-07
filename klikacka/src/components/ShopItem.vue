@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import type { Upgrade } from '../stores/game';
+import type { UpgradeView } from '../stores/game';
 
 const props = defineProps<{
-    upgrade: Upgrade
+    upgrade: UpgradeView
 }>();
 
-const emit = defineEmits(['buy']);
+const emit = defineEmits<{
+    buy: [];
+}>();
 
 function buy() {
-    if (!props.upgrade.disabled) {
-        emit('buy', props.upgrade);
+    if (props.upgrade.canBuy) {
+        emit('buy');
     }
 }
 </script>
@@ -17,7 +19,7 @@ function buy() {
 <template>
     <div 
         class="upgrade-item" 
-        :class="{ 'disabled': upgrade.disabled }"
+        :class="{ 'disabled': !upgrade.canBuy, 'maxed': upgrade.maxed }"
         @click="buy"
     >
         <div class="upgrade-header">
@@ -25,6 +27,6 @@ function buy() {
             <span class="upgrade-cost">{{ upgrade.cost }}</span>
         </div>
         <div class="upgrade-desc">{{ upgrade.description }}</div>
-        <div class="upgrade-level">Level: {{ upgrade.level }}</div>
+        <div class="upgrade-level">Owned: {{ upgrade.owned }}<span v-if="upgrade.maxPurchases"> / {{ upgrade.maxPurchases }}</span></div>
     </div>
 </template>

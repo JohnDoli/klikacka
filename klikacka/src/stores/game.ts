@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 export interface Achievement {
     id: string;
@@ -11,24 +11,65 @@ export interface Achievement {
     category: string;
 }
 
-export interface Upgrade {
+export type UpgradeCategory = 'basic' | 'automatization' | 'special';
+export type UpgradeEffect =
+    | 'click_power'
+    | 'passive_income'
+    | 'afk_income'
+    | 'verification_speed'
+    | 'captcha_slots'
+    | 'income_multiplier';
+
+export interface UpgradeDefinition {
     id: string;
     name: string;
     description: string;
+    baseCost: number;
+    costGrowth: number;
+    owned: number;
+    category: UpgradeCategory;
+    effect: UpgradeEffect;
+    effectValue: number;
+    maxPurchases?: number;
+}
+
+export interface UpgradeView extends UpgradeDefinition {
     cost: number;
-    level: number;
-    category: 'basic' | 'automatization' | 'special';
-    disabled?: boolean;
+    canBuy: boolean;
+    maxed: boolean;
+}
+
+interface SaveState {
+    money: number;
+    mps: number;
+    afkCurrency: number;
+    revenuePerClick: number;
+    verificationSpeed: number;
+    maxCaptchas: number;
+    incomeMultiplier: number;
+    captchaSolvedCount: number;
+    lifetimeMoneyEarned: number;
+    totalMoneySpent: number;
+    upgrades: Array<Pick<UpgradeDefinition, 'id' | 'owned'>>;
+    achievements: Array<Pick<Achievement, 'id' | 'unlocked' | 'solved'>>;
 }
 
 export const useGameStore = defineStore('game', () => {
+    const STORAGE_KEY = 'klikacka-game-state-v1';
+
     const money = ref(0);
     const mps = ref(0);
+    const afkCurrency = ref(0);
     
     // Config
     const revenuePerClick = ref(1);
     const verificationSpeed = ref(1.0);
     const maxCaptchas = ref(1);
+    const incomeMultiplier = ref(1);
+
+    const captchaSolvedCount = ref(0);
+    const lifetimeMoneyEarned = ref(0);
+    const totalMoneySpent = ref(0);
 
     const achievements = ref<Achievement[]>([
         // Clicking
@@ -54,30 +95,229 @@ export const useGameStore = defineStore('game', () => {
         { id: 'patient', title: 'Patient', description: '...', icon: '❓', unlocked: false, solved: false, category: 'Secret' },
     ]);
 
-    const upgrades = ref<Upgrade[]>([
-        { id: 'verification_speed', name: 'Verification Speed', description: 'Reduces time to verify a captcha.', cost: 15, level: 0, category: 'basic', disabled: false },
-        { id: 'captcha_slots', name: 'Captcha Slots', description: 'Increases max number of visible captchas.', cost: 100, level: 1, category: 'basic', disabled: false },
-        { id: 'additional_captcha', name: 'Additional Captcha', description: 'Adds another active captcha button.', cost: 50, level: 1, category: 'basic', disabled: false },
-        { id: 'revenue_per_click', name: 'Revenue per Click', description: 'Increase money earned per solved captcha.', cost: 25, level: 1, category: 'basic', disabled: false },
-        { id: 'script', name: 'Script', description: 'Automatically clicks captcha occasionally.', cost: 150, level: 0, category: 'automatization', disabled: true },
-        { id: 'bot', name: 'Bot', description: 'A more advanced auto-clicker.', cost: 500, level: 0, category: 'automatization', disabled: true },
-        { id: 'server_farm', name: 'Server Farm', description: 'Generates passive income over time.', cost: 2000, level: 0, category: 'automatization', disabled: true },
-        { id: 'golden_chance', name: 'Golden Chance', description: 'Increases chance of Golden Captcha spawning.', cost: 1000, level: 0, category: 'special', disabled: true },
-        { id: 'bonus_duration', name: 'Bonus Duration', description: 'Golden Captcha effects last longer.', cost: 1500, level: 0, category: 'special', disabled: true },
-        { id: 'income_multiplier', name: 'Income Multiplier', description: 'Permanently multiplies all income.', cost: 5000, level: 0, category: 'special', disabled: true },
+    const upgrades = ref<UpgradeDefinition[]>([
+        { id: 'revenue_per_click', name: 'Click Boost', description: 'Increase money earned from each solved captcha.', baseCost: 25, costGrowth: 1.45, owned: 0, category: 'basic', effect: 'click_power', effectValue: 1, maxPurchases: 20 },
+        { id: 'verification_speed', name: 'Verification Speed', description: 'Reduces the time needed to verify a captcha.', baseCost: 15, costGrowth: 1.35, owned: 0, category: 'basic', effect: 'verification_speed', effectValue: 0.25, maxPurchases: 12 },
+        { id: 'captcha_slots', name: 'Captcha Slots', description: 'Unlocks one more visible captcha slot.', baseCost: 100, costGrowth: 1.8, owned: 0, category: 'basic', effect: 'captcha_slots', effectValue: 1, maxPurchases: 4 },
+        { id: 'passive_cps', name: 'CPS Generator', description: 'Adds passive money per second.', baseCost: 50, costGrowth: 1.5, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 1, maxPurchases: 30 },
+        { id: 'afk_currency', name: 'AFK Currency', description: 'Adds idle income that keeps flowing while the game is open.', baseCost: 120, costGrowth: 1.55, owned: 0, category: 'automatization', effect: 'afk_income', effectValue: 2, maxPurchases: 20 },
+        { id: 'script', name: 'Script', description: 'Automates part of the clicking loop.', baseCost: 150, costGrowth: 1.7, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 3, maxPurchases: 10 },
+        { id: 'bot', name: 'Bot', description: 'A stronger automation layer with better throughput.', baseCost: 500, costGrowth: 1.75, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 8, maxPurchases: 8 },
+        { id: 'server_farm', name: 'Server Farm', description: 'Generates substantial passive and AFK income.', baseCost: 2000, costGrowth: 1.9, owned: 0, category: 'special', effect: 'afk_income', effectValue: 15, maxPurchases: 6 },
+        { id: 'golden_chance', name: 'Golden Chance', description: 'Increases all income and click rewards.', baseCost: 1000, costGrowth: 2.0, owned: 0, category: 'special', effect: 'income_multiplier', effectValue: 0.1, maxPurchases: 10 },
+        { id: 'bonus_duration', name: 'Bonus Duration', description: 'Keeps efficiency boosts active longer.', baseCost: 1500, costGrowth: 1.9, owned: 0, category: 'special', effect: 'verification_speed', effectValue: 0.4, maxPurchases: 6 },
+        { id: 'income_multiplier', name: 'Income Multiplier', description: 'Permanently multiplies all income.', baseCost: 5000, costGrowth: 2.15, owned: 0, category: 'special', effect: 'income_multiplier', effectValue: 0.15, maxPurchases: 8 },
     ]);
 
+    function roundMoney(value: number) {
+        return Math.round(value * 100) / 100;
+    }
+
+    function getUpgradeCost(upgrade: UpgradeDefinition) {
+        return Math.max(1, Math.floor(upgrade.baseCost * Math.pow(upgrade.costGrowth, upgrade.owned)));
+    }
+
+    function isUpgradeMaxed(upgrade: UpgradeDefinition) {
+        return typeof upgrade.maxPurchases === 'number' && upgrade.owned >= upgrade.maxPurchases;
+    }
+
+    function unlockAchievement(id: string) {
+        const achievement = achievements.value.find(item => item.id === id);
+        if (achievement) {
+            achievement.unlocked = true;
+            achievement.solved = true;
+        }
+    }
+
+    function updateAchievements() {
+        if (captchaSolvedCount.value >= 100) unlockAchievement('newbie_clicker');
+        if (captchaSolvedCount.value >= 1000) unlockAchievement('exp_clicker');
+        if (captchaSolvedCount.value >= 10000) unlockAchievement('master_clicker');
+        if (captchaSolvedCount.value >= 100000) unlockAchievement('god_clicker');
+
+        if (lifetimeMoneyEarned.value >= 100) unlockAchievement('pocket_change');
+        if (lifetimeMoneyEarned.value >= 10000) unlockAchievement('richie_rich');
+        if (lifetimeMoneyEarned.value >= 1000000) unlockAchievement('millionaire');
+
+        if (totalMoneySpent.value >= 1000) unlockAchievement('big_spender');
+
+        if (upgrades.value.some(upgrade => upgrade.id === 'script' && upgrade.owned > 0)) {
+            unlockAchievement('tech_enthusiast');
+        }
+
+        if (maxCaptchas.value >= 3) {
+            unlockAchievement('full_house');
+        }
+
+        if (upgrades.value.some(upgrade => upgrade.owned > 0)) {
+            unlockAchievement('first_upgrade');
+        }
+    }
+
+    function applyUpgradeEffect(upgrade: UpgradeDefinition) {
+        switch (upgrade.effect) {
+            case 'click_power':
+                revenuePerClick.value += upgrade.effectValue;
+                break;
+            case 'passive_income':
+                mps.value += upgrade.effectValue;
+                break;
+            case 'afk_income':
+                afkCurrency.value += upgrade.effectValue;
+                break;
+            case 'verification_speed':
+                verificationSpeed.value += upgrade.effectValue;
+                break;
+            case 'captcha_slots':
+                maxCaptchas.value += upgrade.effectValue;
+                break;
+            case 'income_multiplier':
+                incomeMultiplier.value += upgrade.effectValue;
+                break;
+        }
+    }
+
     function incrementMoney(amount: number) {
-        money.value += amount;
+        money.value = roundMoney(money.value + amount);
+        lifetimeMoneyEarned.value = roundMoney(lifetimeMoneyEarned.value + amount);
+        updateAchievements();
     }
 
     function spendMoney(amount: number) {
         if (money.value >= amount) {
-            money.value -= amount;
+            money.value = roundMoney(money.value - amount);
+            totalMoneySpent.value = roundMoney(totalMoneySpent.value + amount);
+            updateAchievements();
             return true;
         }
         return false;
     }
+
+    function recordCaptchaSolved() {
+        captchaSolvedCount.value += 1;
+        incrementMoney(revenuePerClick.value);
+    }
+
+    function tickIncome(seconds = 1) {
+        const passiveIncome = (mps.value + afkCurrency.value) * incomeMultiplier.value * seconds;
+        if (passiveIncome > 0) {
+            incrementMoney(passiveIncome);
+        }
+    }
+
+    function buyUpgrade(upgradeId: string) {
+        const upgrade = upgrades.value.find(item => item.id === upgradeId);
+        if (!upgrade || isUpgradeMaxed(upgrade)) {
+            return false;
+        }
+
+        const cost = getUpgradeCost(upgrade);
+        if (!spendMoney(cost)) {
+            return false;
+        }
+
+        upgrade.owned += 1;
+        applyUpgradeEffect(upgrade);
+        updateAchievements();
+        return true;
+    }
+
+    function loadState() {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        try {
+            const rawState = window.localStorage.getItem(STORAGE_KEY);
+            if (!rawState) {
+                return;
+            }
+
+            const parsedState = JSON.parse(rawState) as Partial<SaveState>;
+
+            money.value = typeof parsedState.money === 'number' ? parsedState.money : money.value;
+            mps.value = typeof parsedState.mps === 'number' ? parsedState.mps : mps.value;
+            afkCurrency.value = typeof parsedState.afkCurrency === 'number' ? parsedState.afkCurrency : afkCurrency.value;
+            revenuePerClick.value = typeof parsedState.revenuePerClick === 'number' ? parsedState.revenuePerClick : revenuePerClick.value;
+            verificationSpeed.value = typeof parsedState.verificationSpeed === 'number' ? parsedState.verificationSpeed : verificationSpeed.value;
+            maxCaptchas.value = typeof parsedState.maxCaptchas === 'number' ? parsedState.maxCaptchas : maxCaptchas.value;
+            incomeMultiplier.value = typeof parsedState.incomeMultiplier === 'number' ? parsedState.incomeMultiplier : incomeMultiplier.value;
+            captchaSolvedCount.value = typeof parsedState.captchaSolvedCount === 'number' ? parsedState.captchaSolvedCount : captchaSolvedCount.value;
+            lifetimeMoneyEarned.value = typeof parsedState.lifetimeMoneyEarned === 'number' ? parsedState.lifetimeMoneyEarned : lifetimeMoneyEarned.value;
+            totalMoneySpent.value = typeof parsedState.totalMoneySpent === 'number' ? parsedState.totalMoneySpent : totalMoneySpent.value;
+
+            if (Array.isArray(parsedState.upgrades)) {
+                parsedState.upgrades.forEach(savedUpgrade => {
+                    const upgrade = upgrades.value.find(item => item.id === savedUpgrade.id);
+                    if (upgrade && typeof savedUpgrade.owned === 'number') {
+                        upgrade.owned = savedUpgrade.owned;
+                    }
+                });
+            }
+
+            if (Array.isArray(parsedState.achievements)) {
+                parsedState.achievements.forEach(savedAchievement => {
+                    const achievement = achievements.value.find(item => item.id === savedAchievement.id);
+                    if (achievement) {
+                        achievement.unlocked = Boolean(savedAchievement.unlocked);
+                        achievement.solved = Boolean(savedAchievement.solved);
+                    }
+                });
+            }
+
+            updateAchievements();
+        } catch {
+            // Ignore malformed saves and continue with defaults.
+        }
+    }
+
+    function saveState() {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const state: SaveState = {
+            money: money.value,
+            mps: mps.value,
+            afkCurrency: afkCurrency.value,
+            revenuePerClick: revenuePerClick.value,
+            verificationSpeed: verificationSpeed.value,
+            maxCaptchas: maxCaptchas.value,
+            incomeMultiplier: incomeMultiplier.value,
+            captchaSolvedCount: captchaSolvedCount.value,
+            lifetimeMoneyEarned: lifetimeMoneyEarned.value,
+            totalMoneySpent: totalMoneySpent.value,
+            upgrades: upgrades.value.map(upgrade => ({ id: upgrade.id, owned: upgrade.owned })),
+            achievements: achievements.value.map(achievement => ({
+                id: achievement.id,
+                unlocked: achievement.unlocked,
+                solved: achievement.solved,
+            })),
+        };
+
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    loadState();
+
+    watch(
+        [
+            money,
+            mps,
+            afkCurrency,
+            revenuePerClick,
+            verificationSpeed,
+            maxCaptchas,
+            incomeMultiplier,
+            captchaSolvedCount,
+            lifetimeMoneyEarned,
+            totalMoneySpent,
+            upgrades,
+            achievements,
+        ],
+        saveState,
+        { deep: true }
+    );
 
     const categorizedAchievements = computed(() => {
         const categories: Record<string, Achievement[]> = {};
@@ -90,16 +330,22 @@ export const useGameStore = defineStore('game', () => {
         return categories;
     });
 
-     const categorizedUpgrades = computed(() => {
-        const categories: Record<string, Upgrade[]> = {
+    const passiveIncome = computed(() => roundMoney((mps.value + afkCurrency.value) * incomeMultiplier.value));
+
+    const categorizedUpgrades = computed(() => {
+        const categories: Record<UpgradeCategory, UpgradeView[]> = {
             'basic': [],
             'automatization': [],
             'special': []
         };
         upgrades.value.forEach(u => {
-            if (categories[u.category]) {
-                categories[u.category].push(u);
-            }
+            const cost = getUpgradeCost(u);
+            categories[u.category].push({
+                ...u,
+                cost,
+                canBuy: money.value >= cost && !isUpgradeMaxed(u),
+                maxed: isUpgradeMaxed(u),
+            });
         });
         return categories;
     });
@@ -107,13 +353,23 @@ export const useGameStore = defineStore('game', () => {
     return {
         money,
         mps,
+        afkCurrency,
         revenuePerClick,
         verificationSpeed,
         maxCaptchas,
+        incomeMultiplier,
+        captchaSolvedCount,
+        lifetimeMoneyEarned,
+        totalMoneySpent,
         achievements,
         upgrades,
         incrementMoney,
         spendMoney,
+        recordCaptchaSolved,
+        tickIncome,
+        buyUpgrade,
+        getUpgradeCost,
+        passiveIncome,
         categorizedAchievements,
         categorizedUpgrades
     };

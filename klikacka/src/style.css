@@ -8,6 +8,11 @@
             --win-border: #6582F5;
         }
 
+        /* Make sizing predictable: include padding/borders in element size calculations */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Tahoma', 'Segoe UI', sans-serif;
             background-color: #3A6EA5; /* Classic Desktop Blue */
@@ -15,11 +20,11 @@
             background-size: cover;
             background-position: center;
             margin: 0;
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            padding: 40px 160px; 
+            padding: clamp(12px, 3vw, 40px) clamp(12px, 7vw, 160px);
             box-sizing: border-box;
             user-select: none;
         }
@@ -30,6 +35,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            min-width: 0;
         }
 
         /* XP Window Frame */
@@ -41,6 +47,11 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+            max-height: 100%;
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+            max-width: 100vw;
             overflow: hidden;
             position: relative;
         }
@@ -115,7 +126,9 @@
         /* Inner Content Area */
         .xp-content {
             display: flex;
+            flex-direction: column;
             flex: 1;
+            min-height: 0;
             overflow: hidden;
             padding: 3px;
             background-color: var(--xp-bg);
@@ -128,18 +141,21 @@
             background-color: #FFFFFF;
             border: 1px solid #8E8F8F;
             height: 100%;
+            min-height: 0;
             position: relative;
+            min-width: 0;
+            flex-wrap: nowrap;
         }
 
         main {
-            flex: 1;
+            flex: 1 1 420px;
             padding: 20px;
-            overflow-y: auto;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
             background: linear-gradient(to bottom, #f3f4f8 0%, #d7dbe3 100%);
-            min-width: 340px; /* Ensure space for 300px captcha + padding */
+            min-width: 0;
         }
         
         /* Custom Scrollbar for that retro feel */
@@ -206,6 +222,9 @@
         /* Sidebar / Shop */
         aside {
             width: 300px;
+            flex: 0 1 300px;
+            min-width: 220px;
+            min-height: 0;
             background-color: #ECE9D8;
             display: flex;
             flex-direction: column;
@@ -221,6 +240,7 @@
         aside.left-panel {
             border-right: 2px solid #ECE9D8;
             width: 250px; /* Slightly narrower for achievements */
+            flex-basis: 250px;
         }
 
         .panel-content {
@@ -246,7 +266,7 @@
 
         .scrollable-list {
             flex: 1;
-            overflow-y: auto;
+            overflow: hidden;
             padding: 10px;
         }
         
@@ -559,6 +579,9 @@
             padding: 10px;
             background: #ECE9D8;
             border-bottom: 1px solid #999;
+            width: 100%;
+            flex: 0 0 auto;
+            order: -1;
         }
 
         .mobile-btn {
@@ -576,8 +599,8 @@
             box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
         }
 
-        /* Responsive Styles */
-        @media only screen and (max-width: 1000px) {
+        /* Responsive Styles (small mobile only) */
+        @media only screen and (max-width: 480px) {
             .container {
                 flex-direction: column;
             }
@@ -627,14 +650,14 @@
             } */
             
             main {
-                display: flex; /* Always show main unless covered */
                 padding: 10px;
-                min-width: 0; /* Override the min-width: 340px from desktop */
+                min-width: 0;
+                width: 100%;
             }
 
             /* Main is hidden when a panel is open to avoid scrolling issues */
-            body.panel-open main,
-            body.panel-open .mobile-controls {
+            .container.panel-open main,
+            .container.panel-open + .mobile-controls {
                 display: none !important;
             }
 
@@ -682,8 +705,79 @@
             display: none;
         }
 
-        @media only screen and (max-width: 1000px) {
-             .mobile-control-bar {
-                display: block !important;
-            }
+        .left-panel.show-mobile .mobile-control-bar,
+        .right-panel.show-mobile .mobile-control-bar {
+            display: block;
         }
+
+/* Progressive hiding: hide achievements first, then shop if space is smaller */
+@media (max-width: 1100px) {
+    /* hide achievements sidebar to preserve main + shop */
+    .left-panel {
+        display: none;
+    }
+
+    /* show mobile controls so panels can be opened as overlays */
+    .mobile-controls {
+        display: flex !important;
+    }
+
+    /* overlay behavior for left panel when toggled */
+    .left-panel.show-mobile {
+        display: flex !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
+        padding: 12px;
+        background: #ECE9D8;
+        box-sizing: border-box;
+    }
+
+    /* hide main when a mobile panel is open */
+    .container.panel-open main,
+    .container.panel-open + .mobile-controls {
+        display: none !important;
+    }
+
+    /* shop panel is still visible here, so hide its toggle button */
+    .shop-toggle {
+        display: none;
+    }
+}
+
+@media (max-width: 900px) {
+    /* hide shop sidebar as well on smaller screens */
+    .right-panel {
+        display: none;
+    }
+
+    .mobile-controls {
+        display: flex !important;
+    }
+
+    .right-panel.show-mobile {
+        display: flex !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
+        padding: 12px;
+        background: #ECE9D8;
+        box-sizing: border-box;
+    }
+
+    .container.panel-open main,
+    .container.panel-open + .mobile-controls {
+        display: none !important;
+    }
+
+    /* shop panel hidden here, so show its toggle button */
+    .shop-toggle {
+        display: inline-flex;
+    }
+}

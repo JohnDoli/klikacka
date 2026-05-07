@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useGameStore } from './stores/game';
 import AchievementItem from './components/AchievementItem.vue';
 import ShopItem from './components/ShopItem.vue';
@@ -9,6 +9,9 @@ const store = useGameStore();
 
 const isLeftPanelOpen = ref(false);
 const isRightPanelOpen = ref(false);
+const captchaSlots = computed(() => Array.from({ length: store.maxCaptchas + 1 }, (_, index) => index + 1));
+
+let incomeIntervalId: number | undefined;
 
 function toggleLeftPanel() {
     // If opening left, close right
@@ -27,38 +30,24 @@ function toggleRightPanel() {
 }
 
 function onCaptchaSolved() {
-    store.incrementMoney(store.revenuePerClick || 1); 
-    // Add floating text or animation here if needed
-    // Check achievements
-    checkAchievements();
+    store.recordCaptchaSolved();
 }
 
-function checkAchievements() {
-    // Basic achievement logic (mock)
-    if (store.money >= 100) {
-        const ach = store.achievements.find(a => a.id === 'pocket_change');
-        if (ach && !ach.unlocked) ach.unlocked = true;
+function onBuyUpgrade(upgradeId: string) {
+    store.buyUpgrade(upgradeId);
+}
+
+onMounted(() => {
+    incomeIntervalId = window.setInterval(() => {
+        store.tickIncome(1);
+    }, 1000);
+});
+
+onBeforeUnmount(() => {
+    if (incomeIntervalId !== undefined) {
+        window.clearInterval(incomeIntervalId);
     }
-}
-
-function onBuyUpgrade(upgrade: any) {
-    // Check if we can afford it using the store's current money
-    if (store.spendMoney(upgrade.cost)) {
-        upgrade.level++;
-        
-        // Apply upgrade logic based on ID
-        if (upgrade.id === 'revenue_per_click') {
-            store.revenuePerClick++;
-        } else if (upgrade.id === 'verification_speed') {
-            store.verificationSpeed *= 1.2; // 20% faster
-        } else if (upgrade.id === 'captcha_slots' || upgrade.id === 'additional_captcha') {
-            store.maxCaptchas++;
-        }
-
-        // Increase cost for the next level
-        upgrade.cost = Math.floor(upgrade.cost * 1.5);
-    }
-}
+});
 </script>
 
 <template>
@@ -92,43 +81,25 @@ function onBuyUpgrade(upgrade: any) {
                     </div>
                 </aside>
 
-                <!-- Mobile Toggle Buttons -->
-                <div class="mobile-controls">
-                    <button class="mobile-btn" @click="toggleLeftPanel">🏆 Achievements</button>
-                    <button class="mobile-btn" @click="toggleRightPanel">🛒 Shop</button>
-                </div>
-
                 <main>
                     <!-- Money Count -->
                     <div class="score-container">
                         <div>
-                            <span style="color: #444; font-size: 28px;">$</span><span>{{ store.money }}</span>
+                            <span style="color: #444; font-size: 28px;">$</span><span>{{ Math.floor(store.money) }}</span>
                         </div>
-                        <span class="mps-label">(<span>{{ store.mps }}</span> $/sec)</span>
+                        <span class="mps-label">(<span>{{ store.passiveIncome }}</span> $/sec, <span>+{{ store.revenuePerClick }}</span> $/captcha)</span>
                     </div>
 
                     <!-- Wrapper for Captchas -->
                     <div class="captchas-wrapper">
-                        <!-- Example Captchas -->
-                        <CaptchaBox 
-                            :verificationTime="2000 / (store.verificationSpeed || 1)" 
-                            @solved="onCaptchaSolved" 
-                        />
-                        
-                        <!-- Placeholders should be dynamic based on upgrades -->
-                        <div class="captcha-placeholder" v-if="store.maxCaptchas < 2">Slot #2 (Locked)</div>
-                        <CaptchaBox 
-                            v-else 
-                            :verificationTime="2000 / (store.verificationSpeed || 1)" 
-                            @solved="onCaptchaSolved" 
-                        />
-
-                        <div class="captcha-placeholder" v-if="store.maxCaptchas < 3">Slot #3 (Locked)</div>
-                        <CaptchaBox 
-                            v-else 
-                            :verificationTime="2000 / (store.verificationSpeed || 1)" 
-                            @solved="onCaptchaSolved" 
-                        />
+                        <template v-for="slot in captchaSlots" :key="slot">
+                            <CaptchaBox 
+                                v-if="slot <= store.maxCaptchas"
+                                :verificationTime="2000 / (store.verificationSpeed || 1)" 
+                                @solved="onCaptchaSolved" 
+                            />
+                            <div v-else class="captcha-placeholder">Slot #{{ slot }} (Locked)</div>
+                        </template>
                     </div>
                 </main>
 
@@ -143,12 +114,17 @@ function onBuyUpgrade(upgrade: any) {
                             <div class="upgrade-category" v-for="(list, category) in store.categorizedUpgrades" :key="category">
                                 <h3>{{ category }} Upgrades</h3>
                                 <div v-for="upgrade in list" :key="upgrade.id">
-                                    <ShopItem :upgrade="upgrade" @buy="onBuyUpgrade(upgrade)" />
+                                    <ShopItem :upgrade="upgrade" @buy="onBuyUpgrade(upgrade.id)" />
                                 </div>
                             </div>
                         </div>
                     </div>
                 </aside>
+            </div>
+
+            <div class="mobile-controls">
+                <button class="mobile-btn" @click="toggleLeftPanel">🏆 Achievements</button>
+                <button class="mobile-btn shop-toggle" @click="toggleRightPanel" v-if="!isRightPanelOpen">🛒 Shop</button>
             </div>
         </div>
     </div>
