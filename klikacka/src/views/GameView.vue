@@ -13,9 +13,25 @@ const captchaSlots = computed(() => Array.from({ length: store.maxCaptchas + 1 }
 const verificationTime = computed(() => Math.max(450, 2000 / (store.verificationSpeed || 1)));
 const showOfflineEarnings = computed(() => store.lastOfflineEarnings > 0);
 const formattedOfflineEarnings = computed(() => store.lastOfflineEarnings.toFixed(2));
+const showAfkDuration = computed(() => store.lastAfkDurationSeconds > 0);
+
+function formatDuration(totalSeconds: number) {
+    const seconds = Math.max(0, Math.floor(totalSeconds));
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    }
+    if (minutes > 0) {
+        return `${minutes}m ${remainingSeconds}s`;
+    }
+    return `${remainingSeconds}s`;
+}
+
+const formattedAfkDuration = computed(() => formatDuration(store.lastAfkDurationSeconds));
 
 let incomeIntervalId: number | undefined;
-let activityIntervalId: number | undefined;
 
 function toggleLeftPanel() {
     if (!isLeftPanelOpen.value) {
@@ -45,7 +61,9 @@ function dismissOfflineEarnings() {
 
 const handleVisibilityChange = () => {
     if (document.visibilityState === 'hidden') {
-        store.markActive();
+        store.startAfk();
+    } else if (document.visibilityState === 'visible') {
+        store.endAfk();
     }
 };
 
@@ -53,10 +71,6 @@ onMounted(() => {
     incomeIntervalId = window.setInterval(() => {
         store.tickIncome(1);
     }, 1000);
-
-    activityIntervalId = window.setInterval(() => {
-        store.markActive();
-    }, 15000);
 
     window.addEventListener('beforeunload', store.markActive);
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -66,10 +80,6 @@ onBeforeUnmount(() => {
     if (incomeIntervalId !== undefined) {
         window.clearInterval(incomeIntervalId);
     }
-    if (activityIntervalId !== undefined) {
-        window.clearInterval(activityIntervalId);
-    }
-
     window.removeEventListener('beforeunload', store.markActive);
     document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
@@ -112,6 +122,7 @@ onBeforeUnmount(() => {
                 <div v-if="showOfflineEarnings" class="offline-earnings">
                     <div class="offline-earnings-text">
                         While you were away, you earned <strong>${{ formattedOfflineEarnings }}</strong>.
+                        <span v-if="showAfkDuration"> AFK time: <strong>{{ formattedAfkDuration }}</strong>.</span>
                     </div>
                     <button class="mobile-btn" @click="dismissOfflineEarnings">OK</button>
                 </div>

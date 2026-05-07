@@ -75,6 +75,8 @@ export const useGameStore = defineStore('game', () => {
     const totalMoneySpent = ref(0);
     const lastActiveAt = ref(Date.now());
     const lastOfflineEarnings = ref(0);
+    const afkStartAt = ref<number | null>(null);
+    const lastAfkDurationSeconds = ref(0);
 
     const achievements = ref<Achievement[]>([
         // Clicking
@@ -210,6 +212,19 @@ export const useGameStore = defineStore('game', () => {
         }
     }
 
+    function calculateAfkBonus(elapsedSeconds: number) {
+        const totalMinutes = Math.floor(elapsedSeconds / 60);
+        if (totalMinutes <= 0) {
+            return 0;
+        }
+
+        const fullHours = Math.floor(totalMinutes / 60);
+        const remainingMinutes = totalMinutes % 60;
+        const fullHourBonus = 60 * (fullHours * (fullHours + 1)) / 2;
+        const remainingBonus = remainingMinutes * (1 + fullHours);
+        return fullHourBonus + remainingBonus;
+    }
+
     function applyOfflineEarnings(now: number) {
         if (!lastActiveAt.value || now <= lastActiveAt.value) {
             return;
@@ -234,6 +249,32 @@ export const useGameStore = defineStore('game', () => {
             lastOfflineEarnings.value = offlineIncome;
             incrementMoney(offlineIncome);
         }
+    }
+
+    function startAfk(now = Date.now()) {
+        if (afkStartAt.value === null) {
+            afkStartAt.value = now;
+        }
+        lastActiveAt.value = now;
+        saveState();
+    }
+
+    function endAfk(now = Date.now()) {
+        if (afkStartAt.value === null) {
+            markActive();
+            return;
+        }
+
+        const elapsedSeconds = Math.max(0, Math.floor((now - afkStartAt.value) / 1000));
+        lastAfkDurationSeconds.value = elapsedSeconds;
+        const bonus = roundMoney(calculateAfkBonus(elapsedSeconds));
+        if (bonus > 0) {
+            lastOfflineEarnings.value = bonus;
+            incrementMoney(bonus);
+        }
+
+        afkStartAt.value = null;
+        markActive();
     }
 
     function buyUpgrade(upgradeId: string) {
@@ -375,6 +416,7 @@ export const useGameStore = defineStore('game', () => {
 
     function clearOfflineEarnings() {
         lastOfflineEarnings.value = 0;
+        lastAfkDurationSeconds.value = 0;
     }
 
     const categorizedUpgrades = computed(() => {
@@ -407,6 +449,7 @@ export const useGameStore = defineStore('game', () => {
         lifetimeMoneyEarned,
         totalMoneySpent,
         lastOfflineEarnings,
+        lastAfkDurationSeconds,
         achievements,
         upgrades,
         incrementMoney,
@@ -414,6 +457,8 @@ export const useGameStore = defineStore('game', () => {
         recordCaptchaSolved,
         tickIncome,
         markActive,
+        startAfk,
+        endAfk,
         clearOfflineEarnings,
         buyUpgrade,
         getUpgradeCost,
