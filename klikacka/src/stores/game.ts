@@ -50,12 +50,15 @@ interface SaveState {
     captchaSolvedCount: number;
     lifetimeMoneyEarned: number;
     totalMoneySpent: number;
+    lastActiveAt: number;
     upgrades: Array<Pick<UpgradeDefinition, 'id' | 'owned'>>;
     achievements: Array<Pick<Achievement, 'id' | 'unlocked' | 'solved'>>;
 }
 
 export const useGameStore = defineStore('game', () => {
     const STORAGE_KEY = 'klikacka-game-state-v1';
+    const OFFLINE_RATE = 0.7;
+    const OFFLINE_CAP_SECONDS = 6 * 60 * 60;
 
     const money = ref(0);
     const mps = ref(0);
@@ -70,6 +73,8 @@ export const useGameStore = defineStore('game', () => {
     const captchaSolvedCount = ref(0);
     const lifetimeMoneyEarned = ref(0);
     const totalMoneySpent = ref(0);
+    const lastActiveAt = ref(Date.now());
+    const lastOfflineEarnings = ref(0);
 
     const achievements = ref<Achievement[]>([
         // Clicking
@@ -96,17 +101,17 @@ export const useGameStore = defineStore('game', () => {
     ]);
 
     const upgrades = ref<UpgradeDefinition[]>([
-        { id: 'revenue_per_click', name: 'Click Boost', description: 'Increase money earned from each solved captcha.', baseCost: 25, costGrowth: 1.45, owned: 0, category: 'basic', effect: 'click_power', effectValue: 1, maxPurchases: 20 },
-        { id: 'verification_speed', name: 'Verification Speed', description: 'Reduces the time needed to verify a captcha.', baseCost: 15, costGrowth: 1.35, owned: 0, category: 'basic', effect: 'verification_speed', effectValue: 0.25, maxPurchases: 12 },
-        { id: 'captcha_slots', name: 'Captcha Slots', description: 'Unlocks one more visible captcha slot.', baseCost: 100, costGrowth: 1.8, owned: 0, category: 'basic', effect: 'captcha_slots', effectValue: 1, maxPurchases: 4 },
-        { id: 'passive_cps', name: 'CPS Generator', description: 'Adds passive money per second.', baseCost: 50, costGrowth: 1.5, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 1, maxPurchases: 30 },
-        { id: 'afk_currency', name: 'AFK Currency', description: 'Adds idle income that keeps flowing while the game is open.', baseCost: 120, costGrowth: 1.55, owned: 0, category: 'automatization', effect: 'afk_income', effectValue: 2, maxPurchases: 20 },
-        { id: 'script', name: 'Script', description: 'Automates part of the clicking loop.', baseCost: 150, costGrowth: 1.7, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 3, maxPurchases: 10 },
-        { id: 'bot', name: 'Bot', description: 'A stronger automation layer with better throughput.', baseCost: 500, costGrowth: 1.75, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 8, maxPurchases: 8 },
-        { id: 'server_farm', name: 'Server Farm', description: 'Generates substantial passive and AFK income.', baseCost: 2000, costGrowth: 1.9, owned: 0, category: 'special', effect: 'afk_income', effectValue: 15, maxPurchases: 6 },
-        { id: 'golden_chance', name: 'Golden Chance', description: 'Increases all income and click rewards.', baseCost: 1000, costGrowth: 2.0, owned: 0, category: 'special', effect: 'income_multiplier', effectValue: 0.1, maxPurchases: 10 },
-        { id: 'bonus_duration', name: 'Bonus Duration', description: 'Keeps efficiency boosts active longer.', baseCost: 1500, costGrowth: 1.9, owned: 0, category: 'special', effect: 'verification_speed', effectValue: 0.4, maxPurchases: 6 },
-        { id: 'income_multiplier', name: 'Income Multiplier', description: 'Permanently multiplies all income.', baseCost: 5000, costGrowth: 2.15, owned: 0, category: 'special', effect: 'income_multiplier', effectValue: 0.15, maxPurchases: 8 },
+        { id: 'revenue_per_click', name: 'Click Boost', description: 'Increase money earned from each solved captcha.', baseCost: 30, costGrowth: 1.5, owned: 0, category: 'basic', effect: 'click_power', effectValue: 0.75, maxPurchases: 25 },
+        { id: 'verification_speed', name: 'Verification Speed', description: 'Reduces the time needed to verify a captcha.', baseCost: 20, costGrowth: 1.45, owned: 0, category: 'basic', effect: 'verification_speed', effectValue: 0.2, maxPurchases: 10 },
+        { id: 'captcha_slots', name: 'Captcha Slots', description: 'Unlocks one more visible captcha slot.', baseCost: 120, costGrowth: 1.7, owned: 0, category: 'basic', effect: 'captcha_slots', effectValue: 1, maxPurchases: 4 },
+        { id: 'passive_cps', name: 'CPS Generator', description: 'Adds passive money per second.', baseCost: 60, costGrowth: 1.6, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 0.7, maxPurchases: 25 },
+        { id: 'afk_currency', name: 'AFK Currency', description: 'Adds idle income that keeps flowing while the game is open.', baseCost: 200, costGrowth: 1.6, owned: 0, category: 'automatization', effect: 'afk_income', effectValue: 1.2, maxPurchases: 15 },
+        { id: 'script', name: 'Script', description: 'Automates part of the clicking loop.', baseCost: 350, costGrowth: 1.7, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 2, maxPurchases: 10 },
+        { id: 'bot', name: 'Bot', description: 'A stronger automation layer with better throughput.', baseCost: 900, costGrowth: 1.8, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 4, maxPurchases: 8 },
+        { id: 'server_farm', name: 'Server Farm', description: 'Generates substantial passive and AFK income.', baseCost: 2500, costGrowth: 1.95, owned: 0, category: 'special', effect: 'afk_income', effectValue: 8, maxPurchases: 6 },
+        { id: 'golden_chance', name: 'Golden Chance', description: 'Increases all income and click rewards.', baseCost: 1200, costGrowth: 2.0, owned: 0, category: 'special', effect: 'income_multiplier', effectValue: 0.06, maxPurchases: 10 },
+        { id: 'bonus_duration', name: 'Bonus Duration', description: 'Keeps efficiency boosts active longer.', baseCost: 1600, costGrowth: 1.9, owned: 0, category: 'special', effect: 'verification_speed', effectValue: 0.3, maxPurchases: 6 },
+        { id: 'income_multiplier', name: 'Income Multiplier', description: 'Permanently multiplies all income.', baseCost: 6000, costGrowth: 2.2, owned: 0, category: 'special', effect: 'income_multiplier', effectValue: 0.1, maxPurchases: 8 },
     ]);
 
     function roundMoney(value: number) {
@@ -205,6 +210,32 @@ export const useGameStore = defineStore('game', () => {
         }
     }
 
+    function applyOfflineEarnings(now: number) {
+        if (!lastActiveAt.value || now <= lastActiveAt.value) {
+            return;
+        }
+
+        const elapsedSeconds = Math.min(
+            OFFLINE_CAP_SECONDS,
+            Math.floor((now - lastActiveAt.value) / 1000)
+        );
+
+        if (elapsedSeconds <= 0) {
+            return;
+        }
+
+        const perSecondIncome = (mps.value + afkCurrency.value) * incomeMultiplier.value;
+        if (perSecondIncome <= 0) {
+            return;
+        }
+
+        const offlineIncome = roundMoney(perSecondIncome * elapsedSeconds * OFFLINE_RATE);
+        if (offlineIncome > 0) {
+            lastOfflineEarnings.value = offlineIncome;
+            incrementMoney(offlineIncome);
+        }
+    }
+
     function buyUpgrade(upgradeId: string) {
         const upgrade = upgrades.value.find(item => item.id === upgradeId);
         if (!upgrade || isUpgradeMaxed(upgrade)) {
@@ -245,6 +276,7 @@ export const useGameStore = defineStore('game', () => {
             captchaSolvedCount.value = typeof parsedState.captchaSolvedCount === 'number' ? parsedState.captchaSolvedCount : captchaSolvedCount.value;
             lifetimeMoneyEarned.value = typeof parsedState.lifetimeMoneyEarned === 'number' ? parsedState.lifetimeMoneyEarned : lifetimeMoneyEarned.value;
             totalMoneySpent.value = typeof parsedState.totalMoneySpent === 'number' ? parsedState.totalMoneySpent : totalMoneySpent.value;
+            lastActiveAt.value = typeof parsedState.lastActiveAt === 'number' ? parsedState.lastActiveAt : Date.now();
 
             if (Array.isArray(parsedState.upgrades)) {
                 parsedState.upgrades.forEach(savedUpgrade => {
@@ -266,6 +298,9 @@ export const useGameStore = defineStore('game', () => {
             }
 
             updateAchievements();
+            const now = Date.now();
+            applyOfflineEarnings(now);
+            markActive();
         } catch {
             // Ignore malformed saves and continue with defaults.
         }
@@ -287,6 +322,7 @@ export const useGameStore = defineStore('game', () => {
             captchaSolvedCount: captchaSolvedCount.value,
             lifetimeMoneyEarned: lifetimeMoneyEarned.value,
             totalMoneySpent: totalMoneySpent.value,
+            lastActiveAt: lastActiveAt.value,
             upgrades: upgrades.value.map(upgrade => ({ id: upgrade.id, owned: upgrade.owned })),
             achievements: achievements.value.map(achievement => ({
                 id: achievement.id,
@@ -332,6 +368,15 @@ export const useGameStore = defineStore('game', () => {
 
     const passiveIncome = computed(() => roundMoney((mps.value + afkCurrency.value) * incomeMultiplier.value));
 
+    function markActive() {
+        lastActiveAt.value = Date.now();
+        saveState();
+    }
+
+    function clearOfflineEarnings() {
+        lastOfflineEarnings.value = 0;
+    }
+
     const categorizedUpgrades = computed(() => {
         const categories: Record<UpgradeCategory, UpgradeView[]> = {
             'basic': [],
@@ -361,12 +406,15 @@ export const useGameStore = defineStore('game', () => {
         captchaSolvedCount,
         lifetimeMoneyEarned,
         totalMoneySpent,
+        lastOfflineEarnings,
         achievements,
         upgrades,
         incrementMoney,
         spendMoney,
         recordCaptchaSolved,
         tickIncome,
+        markActive,
+        clearOfflineEarnings,
         buyUpgrade,
         getUpgradeCost,
         passiveIncome,
