@@ -77,6 +77,12 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="xp-content">
+        <Teleport to=".xp-nav">
+            <div class="xp-nav-actions">
+                <button class="mobile-btn" @click="toggleLeftPanel">🏆 Achievements</button>
+                <button class="mobile-btn shop-toggle" @click="toggleRightPanel" v-if="!isRightPanelOpen">🛒 Shop</button>
+            </div>
+        </Teleport>
         <div class="container" :class="{ 'panel-open': isLeftPanelOpen || isRightPanelOpen }">
             <aside class="achievements-sidebar left-panel" :class="{ 'show-mobile': isLeftPanelOpen }">
                 <div class="mobile-control-bar" style="text-align: right; margin-bottom: 5px;">
@@ -138,11 +144,6 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
             </aside>
-        </div>
-
-        <div class="mobile-controls">
-            <button class="mobile-btn" @click="toggleLeftPanel">🏆 Achievements</button>
-            <button class="mobile-btn shop-toggle" @click="toggleRightPanel" v-if="!isRightPanelOpen">🛒 Shop</button>
         </div>
     </div>
 </template>
