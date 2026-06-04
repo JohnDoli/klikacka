@@ -8,6 +8,7 @@ import CaptchaBox from '../components/CaptchaBox.vue';
 import AchievementToast from '../components/AchievementToast.vue';
 import SettingsModal from '../components/SettingsModal.vue';
 import PrestigeModal from '../components/PrestigeModal.vue';
+import ImageCaptchaModal from '../components/ImageCaptchaModal.vue';
 
 const store = useGameStore();
 const audio = useAudioStore();
@@ -16,6 +17,30 @@ const isLeftPanelOpen = ref(false);
 const isRightPanelOpen = ref(false);
 const showSettings = ref(false);
 const showPrestige = ref(false);
+const showImageCaptcha = ref(false);
+
+let imageCaptchaTimer: number | undefined;
+function scheduleImageCaptcha() {
+    clearTimeout(imageCaptchaTimer);
+    const delay = 90000 + Math.random() * 90000; // 90–180 seconds
+    imageCaptchaTimer = window.setTimeout(() => {
+        // Only show if player has some money and game is active
+        if (store.money > 10) showImageCaptcha.value = true;
+        else scheduleImageCaptcha();
+    }, delay);
+}
+
+function onImageCaptchaSolved() {
+    showImageCaptcha.value = false;
+    const bonus = store.money * 0.1;
+    if (bonus > 0) store.incrementMoney(bonus);
+    scheduleImageCaptcha();
+}
+
+function onImageCaptchaDismissed() {
+    showImageCaptcha.value = false;
+    scheduleImageCaptcha();
+}
 
 const captchaSlots = computed(() => Array.from({ length: store.maxCaptchas }, (_, i) => i));
 const verificationTime = computed(() => Math.max(450, 2000 / (store.verificationSpeed || 1)));
@@ -108,12 +133,14 @@ onMounted(() => {
     window.addEventListener('click', onFirstInteraction);
     window.addEventListener('keydown', onFirstInteraction);
     scheduleGolden();
+    scheduleImageCaptcha();
 });
 
 onBeforeUnmount(() => {
     clearInterval(incomeIntervalId);
     clearTimeout(goldenTimer);
     clearTimeout(toastTimer);
+    clearTimeout(imageCaptchaTimer);
     window.removeEventListener('beforeunload', store.markActive);
     document.removeEventListener('visibilitychange', handleVisibilityChange);
     window.removeEventListener('click', onFirstInteraction);
@@ -213,6 +240,7 @@ const fmt = (n: number) => n >= 1_000_000 ? `${(n/1_000_000).toFixed(1)}M` : n >
         <!-- Modals -->
         <SettingsModal v-if="showSettings" @close="showSettings = false" />
         <PrestigeModal v-if="showPrestige" @close="showPrestige = false" @prestiged="() => {}" />
+        <ImageCaptchaModal v-if="showImageCaptcha" @solved="onImageCaptchaSolved" @dismissed="onImageCaptchaDismissed" />
 
         <!-- Achievement Toast -->
         <AchievementToast
