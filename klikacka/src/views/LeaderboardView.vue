@@ -24,12 +24,12 @@ async function loadLeaderboard() {
     loading.value = true;
     error.value = '';
     try {
-        const result = await window.storage.list(STORAGE_KEY_PREFIX + ':');
+        const result = await (window as any).storage.list(STORAGE_KEY_PREFIX + ':');
         const keys = result?.keys ?? [];
         const loaded: Entry[] = [];
         for (const key of keys) {
             try {
-                const val = await window.storage.get(key, true);
+                const val = await (window as any).storage.get(key, true);
                 if (val?.value) loaded.push(JSON.parse(val.value));
             } catch {}
         }
@@ -52,7 +52,7 @@ async function submitScore() {
             captchas: store.captchaSolvedCount,
         };
         const key = `${STORAGE_KEY_PREFIX}:${playerName.value.trim().toLowerCase().replace(/\s+/g,'-').slice(0,20)}`;
-        await window.storage.set(key, JSON.stringify(entry), true);
+        await (window as any).storage.set(key, JSON.stringify(entry), true);
         submitMsg.value = '✅ Score submitted!';
         await loadLeaderboard();
     } catch {
