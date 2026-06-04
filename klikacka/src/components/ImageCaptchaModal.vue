@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import { useAudioStore } from '../stores/audio';
 
 const emit = defineEmits<{ solved: []; dismissed: [] }>();
