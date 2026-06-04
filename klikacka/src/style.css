@@ -861,7 +861,10 @@
     }
 }
 
-        /* ── New feature styles ── */
+        /* Hide nav toggle buttons when their panel is currently open as overlay */
+        .panel-btn-hidden {
+            display: none !important;
+        }
 
         /* Golden captcha */
         .captcha-box.golden {

@@ -128,8 +128,8 @@ const fmt = (n: number) => n >= 1_000_000 ? `${(n/1_000_000).toFixed(1)}M` : n >
     <div class="xp-content">
         <Teleport to=".xp-nav">
             <div class="xp-nav-actions">
-                <button class="mobile-btn" @click="toggleLeftPanel" v-if="!isLeftPanelOpen">🏆 Achievements</button>
-                <button class="mobile-btn shop-toggle" @click="toggleRightPanel" v-if="!isRightPanelOpen">🛒 Shop</button>
+                <button class="mobile-btn achievements-toggle" :class="{ 'panel-btn-hidden': isLeftPanelOpen }" @click="toggleLeftPanel">🏆 Achievements</button>
+                <button class="mobile-btn shop-toggle" :class="{ 'panel-btn-hidden': isRightPanelOpen }" @click="toggleRightPanel">🛒 Shop</button>
                 <button class="mobile-btn prestige-nav-btn" @click="showPrestige = true">
                     🔄 Prestige <span v-if="prestige > 0">({{ prestige }})</span>
                 </button>
