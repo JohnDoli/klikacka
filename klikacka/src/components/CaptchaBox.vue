@@ -1,41 +1,50 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useAudioStore } from '../stores/audio';
 
 const props = defineProps<{
     isGolden?: boolean;
-    verificationTime?: number; // in ms
+    verificationTime?: number;
 }>();
 
 const emit = defineEmits(['solved']);
+const audio = useAudioStore();
 
 const verifying = ref(false);
 const solved = ref(false);
+const justSolved = ref(false);
+
+const boxClass = computed(() => ({
+    'golden': props.isGolden,
+    'verifying': verifying.value,
+    'solved': solved.value,
+    'just-solved': justSolved.value,
+    'animations-off': !audio.animationsEnabled,
+}));
 
 function startVerification() {
     if (verifying.value || solved.value) return;
-
     verifying.value = true;
     setTimeout(() => {
         verifying.value = false;
         solved.value = true;
+        justSolved.value = true;
         emit('solved');
-        
-        // Reset after a short delay so user can click again? 
-        // Or destroy component? In the original game, usually it refreshes or stays solved for a bit.
-        // Let's assume it resets after 1 second for now so it's playable.
+        audio.playSfx('correct');
         setTimeout(() => {
             solved.value = false;
-        }, 500); // Quick reset for gameplay flow
+            justSolved.value = false;
+        }, 500);
     }, props.verificationTime || 2000);
 }
 </script>
 
 <template>
-    <div class="captcha-box" :class="{ 'golden': isGolden, 'verifying': verifying, 'solved': solved }">
+    <div class="captcha-box" :class="boxClass">
         <div class="captcha-left">
             <div class="captcha-checkbox" @click="startVerification">
-                <div class="spinner"></div> <!-- Show .spinner class on verifying -->
-                <div class="checkmark"></div> <!-- Show .checkmark class on solved -->
+                <div class="spinner"></div>
+                <div class="checkmark"></div>
             </div>
             <div class="captcha-label">I'm not a robot</div>
         </div>
@@ -48,9 +57,32 @@ function startVerification() {
             </div>
             <div class="captcha-terms">reCAPTCHA<br>Privacy - Terms</div>
         </div>
+        <div v-if="isGolden" class="golden-badge">✨ GOLDEN</div>
     </div>
 </template>
 
 <style scoped>
-/* Scoped styles if needed, but we rely on global styles for now as they are shared */
+.just-solved:not(.animations-off) {
+    animation: solveFlash 0.4s ease;
+}
+@keyframes solveFlash {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.05); box-shadow: 0 0 16px rgba(0,200,80,0.7); }
+    100% { transform: scale(1); }
+}
+.golden-badge {
+    position: absolute;
+    top: -10px;
+    right: 8px;
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    color: #5a3a00;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(255,200,0,0.5);
+}
+.captcha-box {
+    position: relative;
+}
 </style>
