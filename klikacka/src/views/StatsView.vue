@@ -6,6 +6,8 @@ const store = useGameStore();
 const totalIncome = computed(() => store.lifetimeMoneyEarned.toFixed(2));
 const totalSpent = computed(() => store.totalMoneySpent.toFixed(2));
 const passivePerSecond = computed(() => store.passiveIncome.toFixed(2));
+const achievementsUnlocked = computed(() => store.achievements.filter(a => a.unlocked).length);
+const achievementsTotal = computed(() => store.achievements.length);
 </script>
 
 <template>
@@ -23,7 +25,7 @@ const passivePerSecond = computed(() => store.passiveIncome.toFixed(2));
                 </div>
                 <div class="stats-item">
                     <div class="stats-label">Captcha solved</div>
-                    <div class="stats-value">{{ store.captchaSolvedCount }}</div>
+                    <div class="stats-value">{{ store.captchaSolvedCount.toLocaleString() }}</div>
                 </div>
                 <div class="stats-item">
                     <div class="stats-label">Lifetime earned</div>
@@ -35,7 +37,23 @@ const passivePerSecond = computed(() => store.passiveIncome.toFixed(2));
                 </div>
                 <div class="stats-item">
                     <div class="stats-label">Income multiplier</div>
-                    <div class="stats-value">x{{ store.incomeMultiplier.toFixed(2) }}</div>
+                    <div class="stats-value">×{{ store.incomeMultiplier.toFixed(2) }}</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-label">Prestige count</div>
+                    <div class="stats-value">{{ store.prestigeCount }}</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-label">Prestige bonus</div>
+                    <div class="stats-value">×{{ store.prestigeMultiplier.toFixed(2) }}</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-label">Golden captchas</div>
+                    <div class="stats-value">{{ store.goldenCaptchasCaught }}</div>
+                </div>
+                <div class="stats-item">
+                    <div class="stats-label">Achievements</div>
+                    <div class="stats-value">{{ achievementsUnlocked }} / {{ achievementsTotal }}</div>
                 </div>
             </div>
         </div>

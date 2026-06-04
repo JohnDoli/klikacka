@@ -11,6 +11,7 @@
         <div class="xp-nav">
             <RouterLink to="/">Game</RouterLink>
             <RouterLink to="/stats">Stats</RouterLink>
+            <RouterLink to="/leaderboard">🏆 Leaderboard</RouterLink>
         </div>
         <RouterView />
     </div>
