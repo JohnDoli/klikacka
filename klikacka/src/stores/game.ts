@@ -63,9 +63,9 @@ export const useGameStore = defineStore('game', () => {
     const money = ref(0);
     const mps = ref(0);
     const afkCurrency = ref(0);
-    
+
     // Config
-    const revenuePerClick = ref(1);
+    const revenuePerClick = ref(2);
     const verificationSpeed = ref(1.0);
     const maxCaptchas = ref(1);
     const incomeMultiplier = ref(1);
@@ -97,19 +97,19 @@ export const useGameStore = defineStore('game', () => {
         { id: 'pocket_change', title: 'Pocket Change', description: 'Earn $100.', icon: '💵', unlocked: false, solved: false, category: 'Money' },
         { id: 'richie_rich', title: 'Richie Rich', description: 'Earn $10,000.', icon: '💵', unlocked: false, solved: false, category: 'Money' },
         { id: 'millionaire', title: 'Millionaire', description: 'Earn $1,000,000.', icon: '💰', unlocked: false, solved: false, category: 'Money' },
-         // Secret
+        // Secret
         { id: 'hacker', title: 'Hacker?', description: '...', icon: '❓', unlocked: false, solved: false, category: 'Secret' },
         { id: 'patient', title: 'Patient', description: '...', icon: '❓', unlocked: false, solved: false, category: 'Secret' },
     ]);
 
     const upgrades = ref<UpgradeDefinition[]>([
-        { id: 'revenue_per_click', name: 'Click Boost', description: 'Increase money earned from each solved captcha.', baseCost: 30, costGrowth: 1.5, owned: 0, category: 'basic', effect: 'click_power', effectValue: 0.75, maxPurchases: 25 },
-        { id: 'verification_speed', name: 'Verification Speed', description: 'Reduces the time needed to verify a captcha.', baseCost: 20, costGrowth: 1.45, owned: 0, category: 'basic', effect: 'verification_speed', effectValue: 0.2, maxPurchases: 10 },
-        { id: 'captcha_slots', name: 'Captcha Slots', description: 'Unlocks one more visible captcha slot.', baseCost: 120, costGrowth: 1.7, owned: 0, category: 'basic', effect: 'captcha_slots', effectValue: 1, maxPurchases: 4 },
-        { id: 'passive_cps', name: 'CPS Generator', description: 'Adds passive money per second.', baseCost: 60, costGrowth: 1.6, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 0.7, maxPurchases: 25 },
-        { id: 'afk_currency', name: 'AFK Currency', description: 'Adds idle income that keeps flowing while the game is open.', baseCost: 200, costGrowth: 1.6, owned: 0, category: 'automatization', effect: 'afk_income', effectValue: 1.2, maxPurchases: 15 },
-        { id: 'script', name: 'Script', description: 'Automates part of the clicking loop.', baseCost: 350, costGrowth: 1.7, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 2, maxPurchases: 10 },
-        { id: 'bot', name: 'Bot', description: 'A stronger automation layer with better throughput.', baseCost: 900, costGrowth: 1.8, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 4, maxPurchases: 8 },
+        { id: 'revenue_per_click', name: 'Click Boost', description: 'Increase money earned from each solved captcha.', baseCost: 15, costGrowth: 1.5, owned: 0, category: 'basic', effect: 'click_power', effectValue: 1.5, maxPurchases: 25 },
+        { id: 'verification_speed', name: 'Verification Speed', description: 'Reduces the time needed to verify a captcha.', baseCost: 12, costGrowth: 1.35, owned: 0, category: 'basic', effect: 'verification_speed', effectValue: 0.2, maxPurchases: 10 },
+        { id: 'captcha_slots', name: 'Captcha Slots', description: 'Unlocks one more visible captcha slot.', baseCost: 80, costGrowth: 1.7, owned: 0, category: 'basic', effect: 'captcha_slots', effectValue: 1, maxPurchases: 4 },
+        { id: 'passive_cps', name: 'CPS Generator', description: 'Adds passive money per second.', baseCost: 35, costGrowth: 1.6, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 1.2, maxPurchases: 25 },
+        { id: 'afk_currency', name: 'AFK Currency', description: 'Adds idle income that keeps flowing while the game is open.', baseCost: 120, costGrowth: 1.6, owned: 0, category: 'automatization', effect: 'afk_income', effectValue: 1.8, maxPurchases: 15 },
+        { id: 'script', name: 'Script', description: 'Automates part of the clicking loop.', baseCost: 200, costGrowth: 1.7, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 3, maxPurchases: 10 },
+        { id: 'bot', name: 'Bot', description: 'A stronger automation layer with better throughput.', baseCost: 550, costGrowth: 1.8, owned: 0, category: 'automatization', effect: 'passive_income', effectValue: 6, maxPurchases: 8 },
         { id: 'server_farm', name: 'Server Farm', description: 'Generates substantial passive and AFK income.', baseCost: 2500, costGrowth: 1.95, owned: 0, category: 'special', effect: 'afk_income', effectValue: 8, maxPurchases: 6 },
         { id: 'golden_chance', name: 'Golden Chance', description: 'Increases all income and click rewards.', baseCost: 1200, costGrowth: 2.0, owned: 0, category: 'special', effect: 'income_multiplier', effectValue: 0.06, maxPurchases: 10 },
         { id: 'bonus_duration', name: 'Bonus Duration', description: 'Keeps efficiency boosts active longer.', baseCost: 1600, costGrowth: 1.9, owned: 0, category: 'special', effect: 'verification_speed', effectValue: 0.3, maxPurchases: 6 },
@@ -152,7 +152,7 @@ export const useGameStore = defineStore('game', () => {
             unlockAchievement('tech_enthusiast');
         }
 
-        if (maxCaptchas.value >= 3) {
+        if (maxCaptchas.value >= 5) {
             unlockAchievement('full_house');
         }
 
@@ -202,7 +202,7 @@ export const useGameStore = defineStore('game', () => {
 
     function recordCaptchaSolved() {
         captchaSolvedCount.value += 1;
-        incrementMoney(revenuePerClick.value);
+        incrementMoney(revenuePerClick.value * incomeMultiplier.value);
     }
 
     function tickIncome(seconds = 1) {

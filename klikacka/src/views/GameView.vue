@@ -9,7 +9,7 @@ const store = useGameStore();
 
 const isLeftPanelOpen = ref(false);
 const isRightPanelOpen = ref(false);
-const captchaSlots = computed(() => Array.from({ length: store.maxCaptchas + 1 }, (_, index) => index + 1));
+const captchaSlots = computed(() => Array.from({ length: store.maxCaptchas }, (_, index) => index + 1));
 const verificationTime = computed(() => Math.max(450, 2000 / (store.verificationSpeed || 1)));
 const showOfflineEarnings = computed(() => store.lastOfflineEarnings > 0);
 const formattedOfflineEarnings = computed(() => store.lastOfflineEarnings.toFixed(2));
@@ -128,14 +128,12 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="captchas-wrapper">
-                    <template v-for="slot in captchaSlots" :key="slot">
-                        <CaptchaBox 
-                            v-if="slot <= store.maxCaptchas"
-                            :verificationTime="verificationTime" 
-                            @solved="onCaptchaSolved" 
-                        />
-                        <div v-else class="captcha-placeholder">Slot #{{ slot }} (Locked)</div>
-                    </template>
+                    <CaptchaBox
+                        v-for="slot in captchaSlots"
+                        :key="slot"
+                        :verificationTime="verificationTime"
+                        @solved="onCaptchaSolved"
+                    />
                 </div>
             </main>
 
